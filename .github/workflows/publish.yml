@@ -16,13 +16,5 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v1
 
-    - name: Setup gcloud
-      env:
-        LINKERD_SITE_TOKEN: ${{ secrets.LINKERD_SITE_TOKEN }}
-      run: |-
-        echo "${LINKERD_SITE_TOKEN}" | base64 -d > .gcp.json
-        gcloud auth activate-service-account --key-file=.gcp.json
-
     - name: Publish
-      run: |-
-        make publish
+      run: echo "Publishing.."

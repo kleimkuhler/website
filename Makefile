@@ -1,3 +1,4 @@
+# Test comment
 
 export PROJECT ?= linkerd-site
 RELEASE_URL = https://github.com/linkerd/linkerd2/releases
