@@ -2,7 +2,7 @@
 export PROJECT ?= linkerd-site
 RELEASE_URL = https://github.com/linkerd/linkerd2/releases
 
-# Version values will be replaced by `get-versions` target.
+# Version values will be replaced by `update-versions` target.
 export L5D2_STABLE_VERSION ?= "stable-X.X.X"
 export L5D2_EDGE_VERSION ?= "edge-X.X.X"
 
@@ -24,14 +24,23 @@ HAS_HTMLTEST := $(shell command -v htmltest;)
 HAS_MDLINT := $(shell command -v markdownlint;)
 
 .PHONY: publish
-publish: get-versions build-linkerd.io deploy
+publish: update-versions build-linkerd.io deploy
 	@# Publish a new version of the sites
+
+.PHONY: update-versions
+update-versions:
+	$(MAKE) get-versions; \
+	$(MAKE) replace-env-L5D2_STABLE_VERSION replace-env-L5D2_EDGE_VERSION
 
 .PHONY: get-versions
 get-versions:
-	@# Update the version for the %* site
-	@. ./bin/export-channel-versions; \
-	$(MAKE) replace-env-L5D2_STABLE_VERSION replace-env-L5D2_EDGE_VERSION
+	releases_url="https://api.github.com/repos/linkerd/linkerd2/releases"; \
+	stable_tag_regex="\"tag_name\": \"stable-[0-9]+\.[0-9]+\.[0-9]\""; \
+	edge_tag_regex="\"tag_name\": \"edge-[0-9]+\.[0-9]+\.[0-9]\""; \
+	export L5D2_STABLE_VERSION=$$(curl -s "$$releases_url" | awk -v pattern="$$stable_tag_regex" '$$0 ~ pattern {gsub(/"/, "", $$2); gsub(/,$$/,""); print $$2; exit}'); \
+	echo $$L5D2_STABLE_VERSION; \
+	export L5D2_EDGE_VERSION=$$(curl -s $$releases_url | awk -v pattern="$$edge_tag_regex" '$$0 ~ pattern {gsub(/"/, "", $$2); gsub(/,$$/,""); print $$2; exit}'); \
+	echo $$L5D2_EDGE_VERSION; \
 
 .PHONY: deploy-%
 deploy-%: tmp/%/public
@@ -109,7 +118,7 @@ serve-api.linkerd.io: build-api.linkerd.io
 		&& python3 -m http.server 9999
 
 .PHONY: build-linkerd.io
-build-linkerd.io: get-versions tmp/linkerd.io
+build-linkerd.io: update-versions tmp/linkerd.io
 	@# Build linkerd.io
 ifndef HAS_HUGO
 	@printf "Install hugo first. For OSX: brew install hugo\n"; exit 1
@@ -122,7 +131,7 @@ build-api.linkerd.io:
 	cd api.linkerd.io && ./build
 
 .PHONY: build-%
-build-%: get-versions
+build-%: update-versions
 	@# Build *.linkerd.io
 
 .PHONY: replace-env-%
